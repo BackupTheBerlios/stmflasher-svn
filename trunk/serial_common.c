@@ -24,25 +24,41 @@
 
 serial_baud_t serial_get_baud(const unsigned int baud) {
 	switch(baud) {
-		case   1200: return SERIAL_BAUD_1200  ;
-		case   1800: return SERIAL_BAUD_1800  ;
-		case   2400: return SERIAL_BAUD_2400  ;
-		case   4800: return SERIAL_BAUD_4800  ;
-		case   9600: return SERIAL_BAUD_9600  ;
-		case  19200: return SERIAL_BAUD_19200 ;
-		case  38400: return SERIAL_BAUD_38400 ;
-		case  57600: return SERIAL_BAUD_57600 ;
-		case 115200: return SERIAL_BAUD_115200;
-		case 128000: return SERIAL_BAUD_128000;
-		case 230400: return SERIAL_BAUD_230400;
-		case 256000: return SERIAL_BAUD_256000;
-		case 460800: return SERIAL_BAUD_460800;
-		case 500000: return SERIAL_BAUD_500000;
-		case 576000: return SERIAL_BAUD_576000;
-		case 921600: return SERIAL_BAUD_921600;
+		case      50: return SERIAL_BAUD_50     ;
+		case      75: return SERIAL_BAUD_75     ;
+		case     110: return SERIAL_BAUD_110    ;
+		case     134: return SERIAL_BAUD_134    ;
+		case     150: return SERIAL_BAUD_150    ;
+		case     200: return SERIAL_BAUD_200    ;
+		case     300: return SERIAL_BAUD_300    ;
+		case     600: return SERIAL_BAUD_600    ;
+		case    1200: return SERIAL_BAUD_1200   ;
+		case    1800: return SERIAL_BAUD_1800   ;
+		case    2400: return SERIAL_BAUD_2400   ;
+		case    4800: return SERIAL_BAUD_4800   ;
+		case    7200: return SERIAL_BAUD_7200   ;
+		case    9600: return SERIAL_BAUD_9600   ;
+		case   14400: return SERIAL_BAUD_14400  ;
+		case   19200: return SERIAL_BAUD_19200  ;
+		case   38400: return SERIAL_BAUD_38400  ;
+		case   57600: return SERIAL_BAUD_57600  ;
+		case   76800: return SERIAL_BAUD_76800  ;
+		case  115200: return SERIAL_BAUD_115200 ;
+		case  128000: return SERIAL_BAUD_128000 ;
+		case  230400: return SERIAL_BAUD_230400 ;
+		case  256000: return SERIAL_BAUD_256000 ;
+		case  460800: return SERIAL_BAUD_460800 ;
+		case  500000: return SERIAL_BAUD_500000 ;
+		case  576000: return SERIAL_BAUD_576000 ;
+		case  921600: return SERIAL_BAUD_921600 ;
 		case 1000000: return SERIAL_BAUD_1000000;
+		case 1152000: return SERIAL_BAUD_1152000;
 		case 1500000: return SERIAL_BAUD_1500000;
 		case 2000000: return SERIAL_BAUD_2000000;
+		case 2500000: return SERIAL_BAUD_2500000;
+		case 3000000: return SERIAL_BAUD_3000000;
+		case 3500000: return SERIAL_BAUD_3500000;
+		case 4000000: return SERIAL_BAUD_4000000;
 
 		default:
 			return SERIAL_BAUD_INVALID;
@@ -51,25 +67,42 @@ serial_baud_t serial_get_baud(const unsigned int baud) {
 
 const unsigned int serial_get_baud_int(const serial_baud_t baud) {
 	switch(baud) {
-		case SERIAL_BAUD_1200  : return 1200  ;
-		case SERIAL_BAUD_1800  : return 1800  ;
-		case SERIAL_BAUD_2400  : return 2400  ;
-		case SERIAL_BAUD_4800  : return 4800  ;
-		case SERIAL_BAUD_9600  : return 9600  ;
-		case SERIAL_BAUD_19200 : return 19200 ;
-		case SERIAL_BAUD_38400 : return 38400 ;
-		case SERIAL_BAUD_57600 : return 57600 ;
-		case SERIAL_BAUD_115200: return 115200;
-		case SERIAL_BAUD_128000: return 128000;
-		case SERIAL_BAUD_230400: return 230400;
-		case SERIAL_BAUD_256000: return 256000;
-		case SERIAL_BAUD_460800: return 460800;
-		case SERIAL_BAUD_500000: return 500000;
-		case SERIAL_BAUD_576000: return 576000;
-		case SERIAL_BAUD_921600: return 921600;
+		case SERIAL_BAUD_50     : return      50;
+		case SERIAL_BAUD_75     : return      75;
+		case SERIAL_BAUD_110    : return     110;
+		case SERIAL_BAUD_134    : return     134;
+		case SERIAL_BAUD_150    : return     150;
+		case SERIAL_BAUD_200    : return     200;
+		case SERIAL_BAUD_300    : return     300;
+		case SERIAL_BAUD_600    : return     600;
+		case SERIAL_BAUD_1200   : return    1200;
+		case SERIAL_BAUD_1800   : return    1800;
+		case SERIAL_BAUD_2400   : return    2400;
+		case SERIAL_BAUD_4800   : return    4800;
+		case SERIAL_BAUD_7200   : return    7200;
+		case SERIAL_BAUD_9600   : return    9600;
+		case SERIAL_BAUD_14400  : return   14400;
+		case SERIAL_BAUD_19200  : return   19200;
+		case SERIAL_BAUD_28800  : return   28800;
+		case SERIAL_BAUD_38400  : return   38400;
+		case SERIAL_BAUD_57600  : return   57600;
+		case SERIAL_BAUD_76800  : return   76800;
+		case SERIAL_BAUD_115200 : return  115200;
+		case SERIAL_BAUD_128000 : return  128000;
+		case SERIAL_BAUD_230400 : return  230400;
+		case SERIAL_BAUD_256000 : return  256000;
+		case SERIAL_BAUD_460800 : return  460800;
+		case SERIAL_BAUD_500000 : return  500000;
+		case SERIAL_BAUD_576000 : return  576000;
+		case SERIAL_BAUD_921600 : return  921600;
 		case SERIAL_BAUD_1000000: return 1000000;
+		case SERIAL_BAUD_1152000: return 1152000;
 		case SERIAL_BAUD_1500000: return 1500000;
 		case SERIAL_BAUD_2000000: return 2000000;
+		case SERIAL_BAUD_2500000: return 2500000;
+		case SERIAL_BAUD_3000000: return 3000000;
+		case SERIAL_BAUD_3500000: return 3500000;
+		case SERIAL_BAUD_4000000: return 4000000;
 
 		case SERIAL_BAUD_INVALID:
 		default:

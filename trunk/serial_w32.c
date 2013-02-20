@@ -117,30 +117,26 @@ serial_err_t serial_setup(serial_t *h,
 		return SERIAL_ERR_NOT_CONFIGURED;
 
 	switch(baud) {
+		case SERIAL_BAUD_110   : h->newtio.BaudRate = CBR_110   ; break;
+		case SERIAL_BAUD_300   : h->newtio.BaudRate = CBR_300   ; break;
+		case SERIAL_BAUD_600   : h->newtio.BaudRate = CBR_600   ; break;
 		case SERIAL_BAUD_1200  : h->newtio.BaudRate = CBR_1200  ; break;
-		//case SERIAL_BAUD_1800  : h->newtio.BaudRate = CBR_1800  ; break;
 		case SERIAL_BAUD_2400  : h->newtio.BaudRate = CBR_2400  ; break;
 		case SERIAL_BAUD_4800  : h->newtio.BaudRate = CBR_4800  ; break;
 		case SERIAL_BAUD_9600  : h->newtio.BaudRate = CBR_9600  ; break;
+		case SERIAL_BAUD_14400 : h->newtio.BaudRate = CBR_14400 ; break;
 		case SERIAL_BAUD_19200 : h->newtio.BaudRate = CBR_19200 ; break;
 		case SERIAL_BAUD_38400 : h->newtio.BaudRate = CBR_38400 ; break;
+		case SERIAL_BAUD_56000 : h->newtio.BaudRate = CBR_56000 ; break;
 		case SERIAL_BAUD_57600 : h->newtio.BaudRate = CBR_57600 ; break;
 		case SERIAL_BAUD_115200: h->newtio.BaudRate = CBR_115200; break;
 		case SERIAL_BAUD_128000: h->newtio.BaudRate = CBR_128000; break;
 		case SERIAL_BAUD_256000: h->newtio.BaudRate = CBR_256000; break;
-		/* These are not defined in WinBase.h and might work or not */
-		case SERIAL_BAUD_230400: h->newtio.BaudRate = 230400; break;
- 		case SERIAL_BAUD_460800: h->newtio.BaudRate = 460800; break;
-		case SERIAL_BAUD_500000: h->newtio.BaudRate = 500000; break;
-		case SERIAL_BAUD_576000: h->newtio.BaudRate = 576000; break;
-		case SERIAL_BAUD_921600: h->newtio.BaudRate = 921600; break;
-		case SERIAL_BAUD_1000000: h->newtio.BaudRate = 1000000; break;
-		case SERIAL_BAUD_1500000: h->newtio.BaudRate = 1500000; break;
-		case SERIAL_BAUD_2000000: h->newtio.BaudRate = 2000000; break;
 
-		case SERIAL_BAUD_INVALID:
+		case SERIAL_BAUD_INVALID: return SERIAL_ERR_INVALID_BAUD; break;
 		default:
-			return SERIAL_ERR_INVALID_BAUD;
+		/* These are not defined in WinBase.h and might work or not */
+			h->newtio.BaudRate = serial_get_baud_int(baud);
 	}
 
 	switch(bits) {
