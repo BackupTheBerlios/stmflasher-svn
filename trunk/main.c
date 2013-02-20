@@ -486,8 +486,11 @@ int parse_options(int argc, char *argv[]) {
 	char have_work = 0;
 	char show_help_and_exit = 0;
 
-	while((c = getopt(argc, argv, "b:r:w:vn:g:ujkeiMREKfchs:S:V:")) != -1) {
+	while((c = getopt(argc, argv, "p:b:r:w:vn:g:ujkeiMREKfchs:S:V:")) != -1) {
 		switch(c) {
+			case 'p':
+				device = optarg;
+				break;
 			case 'b':
 				baudRate = serial_get_baud(strtoul(optarg, NULL, 0));
 				if (baudRate == SERIAL_BAUD_INVALID) {
@@ -681,10 +684,13 @@ int parse_options(int argc, char *argv[]) {
 }
 
 void show_help(char *name, char *ser_port) {
-	fprintf(stderr, "stmflasher - http://developer.berlios.de/projects/stmflasher/\n\n");
+	fprintf(stderr, "stmflasher v0.5 - http://developer.berlios.de/projects/stmflasher/\n\n");
 	fprintf(stderr,
-		"Usage: %s [-b rate] [-EvMKfc] [-S address[:length]] [-s start_page[:n_pages]]\n"
-		"	[-n count] [-r|w filename] [-ujkeiR] [-g address] [-V level] [-h] ser_port\n"
+		"Usage: %s -p ser_port [-b rate] [-EvMKfc] [-S address[:length]] [-s start_page[:n_pages]]\n"
+		"	[-n count] [-r|w filename] [-ujkeiR] [-g address] [-V level] [-h]\n"
+		"\n"
+		"	-p ser_port	Serial port name\n"
+		"	-b ser_port	Serial port baud rate (default 57600)\n"
 		"\n"
 		"	-r filename	Read flash to file (stdout if \"-\")\n"
 		"	-w filename	Write flash from file (stdin if \"-\")\n"
@@ -715,17 +721,17 @@ void show_help(char *name, char *ser_port) {
 		"\n"
 		"Examples:\n"
 		"	Get device information:\n"
-		"		%s %s -i\n"
+		"		%s -p %s -i\n"
 		"	Write with verify and then start execution:\n"
-		"		%s %s -w filename -v -g 0x0\n"
+		"		%s -p %s -w filename -v -g 0x0\n"
 		"	Show information and read flash to file:\n"
-		"		%s %s -i -r filename\n"
+		"		%s -p %s -i -r filename\n"
 		"	Read 100 bytes of RAM with offset 0x1000 to stdout:\n"
-		"		%s %s -r - -M -S 0x1000:100\n"
+		"		%s -p %s -r - -M -S 0x1000:100\n"
 		"	Read first page of flash to file in verbose mode:\n"
-		"		%s %s -r readed.bin -S :1 -V\n"
+		"		%s -p %s -r readed.bin -S :1 -V\n"
 		"	Start execution:\n"
-		"		%s %s -g 0x0\n",
+		"		%s -p %s -g 0x0\n",
 		name,
 		name, ser_port,
 		name, ser_port,
