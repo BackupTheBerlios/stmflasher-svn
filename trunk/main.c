@@ -687,7 +687,7 @@ int parse_options(int argc, char *argv[]) {
 }
 
 void show_help(char *name, char *ser_port) {
-	fprintf(stderr, "stmflasher v0.5 - http://developer.berlios.de/projects/stmflasher/\n\n");
+	fprintf(stderr, "stmflasher v0.5.1 current - http://developer.berlios.de/projects/stmflasher/\n\n");
 	fprintf(stderr,
 		"Usage: %s -p ser_port [-b rate] [-EvMKfc] [-S address[:length]] [-s start_page[:n_pages]]\n"
 		"	[-n count] [-r|w filename] [-ujkeiR] [-g address] [-V level] [-h]\n"
