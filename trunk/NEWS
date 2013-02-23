@@ -1,0 +1,23 @@
+stmflasher v0.5            21.02.2013
+
+ First release since fork. Changes from stm32flash SVN r61.
+ * applied patches ("merging branch" on gitorious, thanks to Tormod Volden)
+ ** issue10 - fixed "More than two bytes sent"
+ ** issue16 - small fixes for win32
+ ** issue17 - additional serial speeds
+ ** issue22 - support for reading from stdin/writing to stdout
+ ** issue29 - support STM32F0 devices
+ ** issue31 - support for Readout Unprotect command
+ ** issue32 - corrected help information
+ ** issue34 - new Reset code, STM32F3 & STM32F0 support, small improvements
+ * fixes for merging branch
+ ** fixed memory write procedure when we write file to default location
+ ** fixed memory erase proc for chips with Extended Erase (with more than 255
+    flash pages)
+ * major redesign of command line interface
+ * added separate flag to work with RAM
+ * allow to plug/reset device after flasher is started (5 INIT retries)
+ * fixed "Failed to read byte: read_byte: Success"
+ * set the same timeout on Win32 and Posix (3 sec)
+ * fixed parity check on Posix
+ * many other internal fixes
