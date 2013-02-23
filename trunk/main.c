@@ -192,7 +192,6 @@ int main(int argc, char* argv[]) {
 		}
 		addr = start;
 
-
 		fflush(diag);
 		while(addr < end) {
 			uint32_t left	= end - addr;
@@ -290,7 +289,7 @@ int main(int argc, char* argv[]) {
 		// if ((start % stm->dev->fl_ps) != 0 || (end % stm->dev->fl_ps) != 0) {
 		//	fprintf(stderr, "Specified start & length are invalid (must be page aligned)\n");
 		//	goto close;
-		// } 
+		// }
 
 		// TODO: If writes are not page aligned, we should probably read out existing flash
 		//       contents first, so it can be preserved and combined with new data
@@ -552,7 +551,7 @@ int parse_options(int argc, char *argv[]) {
 					return 1;
 				}
 				break;
-			
+
 			case 'E':
 				full_erase = 1;
 				if (spage || (npages && (npages < 0xFFFF))) {

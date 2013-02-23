@@ -103,7 +103,7 @@ uint8_t stm32_gen_cs(const uint32_t v) {
 		((v & 0x000000FF) >>  0);
 }
 
-void stm32_send_byte(const stm32_t *stm, uint8_t byte) {	
+void stm32_send_byte(const stm32_t *stm, uint8_t byte) {
 	serial_err_t err;
 	err = serial_write(stm->serial, &byte, 1);
 	if (err != SERIAL_ERR_OK) {
@@ -203,7 +203,7 @@ stm32_t* stm32_init(const serial_t *serial, const char init) {
 		stm32_close(stm);
 		return NULL;
 	}
-	
+
 	/* get the version and read protection status  */
 	if (!stm32_send_command(stm, stm->cmd->gvr)) {
 		stm32_close(stm);
@@ -382,7 +382,7 @@ char stm32_erase_memory(const stm32_t *stm, uint16_t spage, uint16_t pages) {
 
 	if (!pages)
 		return 1;
-	
+
 	if (!stm32_send_command(stm, stm->cmd->er)) {
 		fprintf(stderr, "Can't initiate chip erase!\n");
 		return 0;
@@ -400,7 +400,7 @@ char stm32_erase_memory(const stm32_t *stm, uint16_t spage, uint16_t pages) {
 			spage = 0;
 			pages = (stm->dev->fl_end - stm->dev->fl_start) / stm->dev->fl_ps; /* works for the STM32L152RB with 128Kb flash */
 		}
-		
+
 
 		if (pages == 0xFFFF) {
 			stm32_send_byte(stm, 0xFF);
@@ -417,10 +417,10 @@ char stm32_erase_memory(const stm32_t *stm, uint16_t spage, uint16_t pages) {
 		uint16_t pg_num;
 		uint8_t pg_byte;
  		uint8_t cs = (pages-1 >> 8) ^ (pages-1 & 0xFF);
- 
+
  		stm32_send_byte(stm, pages-1 >> 8); // Number of pages to be erased, two bytes, MSB first
  		stm32_send_byte(stm, pages-1 & 0xFF);
- 
+
  		for (pg_num = spage; pg_num < (pages + spage); pg_num++) {
  			pg_byte = pg_num >> 8;
  			cs ^= pg_byte;
@@ -430,7 +430,7 @@ char stm32_erase_memory(const stm32_t *stm, uint16_t spage, uint16_t pages) {
  			stm32_send_byte(stm, pg_byte);
  		}
  		stm32_send_byte(stm, cs);
- 	
+
  		if (stm32_read_byte(stm) != STM32_ACK) {
  			fprintf(stderr, "Page-by-page erase failed. Check the maximum pages your device supports.\n");
 			return 0;
@@ -461,33 +461,33 @@ char stm32_run_raw_code(const stm32_t *stm, uint32_t target_address, const uint8
 	uint32_t stack_le = le_u32(0x20002000);
 	uint32_t code_address_le = le_u32(target_address + 8);
 	uint32_t length = code_size + 8;
-	
+
 	/* Must be 32-bit aligned */
 	assert(target_address % 4 == 0);
 
 	uint8_t *mem = malloc(length);
 	if (!mem)
 		return 0;
-	
+
 	memcpy(mem, &stack_le, sizeof(uint32_t));
 	memcpy(mem + 4, &code_address_le, sizeof(uint32_t));
 	memcpy(mem + 8, code, code_size);
-	
+
 	uint8_t *pos = mem;
 	uint32_t address = target_address;
 	while(length > 0) {
-		
+
 		uint32_t w = length > 256 ? 256 : length;
 		if (!stm32_write_memory(stm, address, pos, w)) {
 			free(mem);
 			return 0;
 		}
-		
+
 		address += w;
 		pos += w;
 		length -=w;
 	}
-	
+
 	free(mem);
 	return stm32_go(stm, target_address);
 }
@@ -507,7 +507,7 @@ char stm32_go(const stm32_t *stm, uint32_t address) {
 
 char stm32_reset_device(const stm32_t *stm) {
 	uint32_t target_address = stm->dev->ram_start;
-	
+
 	return stm32_run_raw_code(stm, target_address, stm_reset_code, stm_reset_code_length);
 }
 
