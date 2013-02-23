@@ -159,15 +159,19 @@ int main(int argc, char* argv[]) {
 
 	if(verbose > 1 || show_info) {
 		fprintf(diag, "MCU info\n");
-		fprintf(diag, "Version       : 0x%02x\n", stm->bl_version);
+		fprintf(diag, "Device ID     : 0x%04x (%s)\n", stm->pid, stm->dev->name);
+		fprintf(diag, "Bootloader Ver: 0x%02x\n", stm->bl_version);
 		fprintf(diag, "Option 1      : 0x%02x\n", stm->option1);
 		fprintf(diag, "Option 2      : 0x%02x\n", stm->option2);
-		fprintf(diag, "Device ID     : 0x%04x (%s)\n", stm->pid, stm->dev->name);
-		fprintf(diag, "- RAM up to   :%4dKiB at 0x%08x (%db reserved by bootloader)\n", (stm->dev->ram_end - 0x20000000) / 1024, stm->dev->ram_start, stm->dev->ram_start - 0x20000000);
-		fprintf(diag, "- System RAM  :%4dKiB at 0x%08x\n", (stm->dev->mem_end - stm->dev->mem_start) / 1024, stm->dev->mem_start);
-		fprintf(diag, "- Option RAM  :  %4dB at 0x%08x\n", stm->dev->opt_end - stm->dev->opt_start + 1, stm->dev->opt_start);
+		fprintf(diag, "- RAM up to   :%4dKiB at 0x%08x\n", (stm->dev->ram_end - stm->dev->ram_start) / 1024, stm->dev->ram_start);
+		fprintf(diag, "  (%db to 0x%08x reserved by bootloader)\n", stm->dev->ram_bl_res - stm->dev->ram_start , stm->dev->ram_bl_res);
+		fprintf(diag, "- System mem  :%4dKiB at 0x%08x\n", (stm->dev->mem_end - stm->dev->mem_start) / 1024, stm->dev->mem_start);
+		fprintf(diag, "- Option mem  :  %4dB at 0x%08x\n", stm->dev->opt_end - stm->dev->opt_start + 1, stm->dev->opt_start);
 		fprintf(diag, "- Flash up to :%4dKiB at 0x%08x\n", (stm->dev->fl_end - stm->dev->fl_start ) / 1024, stm->dev->fl_start);
 		fprintf(diag, "- Flash org.  :%5d pages (sector size: %dx%d)\n", (stm->dev->fl_end - stm->dev->fl_start ) / stm->dev->fl_ps, stm->dev->fl_pps, stm->dev->fl_ps);
+		if(stm->dev->eep_end - stm->dev->eep_start)
+			fprintf(diag, "- EEPROM      :%4dKiB at 0x%08x\n", (stm->dev->eep_end - stm->dev->eep_start ) / 1024, stm->dev->eep_start);
+		fprintf(diag, "Note: specified RAM/Flash sizes are maximum for this chip type. Your chip may have less memory amount!\n");
 		fprintf(diag, "\n");
 	}
 
@@ -412,7 +416,7 @@ close:
 int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
 {
 	uint32_t tmp_start = 0, tmp_end = 0;
-	uint32_t allowed_start = ram_read_write?stm->dev->ram_start:stm->dev->fl_start;
+	uint32_t allowed_start = ram_read_write?stm->dev->ram_bl_res:stm->dev->fl_start;
 	uint32_t allowed_end = ram_read_write?stm->dev->ram_end:stm->dev->fl_end;
 
 	if (start_addr) {
