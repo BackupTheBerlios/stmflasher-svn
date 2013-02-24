@@ -266,7 +266,7 @@ int main(int argc, char* argv[]) {
 		ssize_t r;
 		unsigned int size;
 
-		/* Assume data from stdin is whole spcified range */
+		/* Assume data from stdin is whole specified range */
 		if (filename[0] != '-') {
 			unsigned int tmp_size = parser->size(p_st);
 			if((readwrite_len == 0) || ((readwrite_len != 0) && (readwrite_len < tmp_size)))
