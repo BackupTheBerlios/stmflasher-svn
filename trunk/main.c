@@ -42,6 +42,11 @@ enum {
 	MEM_TYPE_RAM,
 	MEM_TYPE_EEPROM
 };
+enum {
+	EXEC_FLAG_NONE = 0,
+	EXEC_FLAG_REL,
+	EXEC_FLAG_ABS
+};
 
 /* device globals */
 serial_t	*serial		= NULL;
@@ -68,7 +73,7 @@ uint32_t	start_addr	= 0; //addr for read/write
 char		verify		= 0; //verify data after writing
 int		retry		= 10;//number of write retries
 char		reset_flag	= 1; //reset device after operation
-char		exec_flag	= 0; //execute code after operation
+char		exec_flag	= EXEC_FLAG_NONE; //execute code after operation
 uint32_t	execute		= 0; //execution address
 char		init_flag	= 1; //send INIT to device
 char		force_binary	= 0; //force to use binary parser
@@ -415,11 +420,14 @@ close:
  * * start_addr, spage - start of working region
  * * readwrite_len, npages - size of working region
  * * relative_addr - use relative start address
+ * * execute - execution address
+ * * exec_flag - absolute or relative flag
  * Output data: Arguments
  * * start, end - absolute start and end addresses of working region
  * Output data: Global variables
  * * start_addr, spage - start of working region (start_addr always absolute)
  * * readwrite_len, npages - size of working region
+ * * execute - absolute execution address
  * return value: 0 if error; 1 if OK
  */
 int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
@@ -472,7 +480,7 @@ int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
 		return 0;
 	}
 
-/*Step 2. claculate start_addr and spage*/
+/*Step 2. claculate start_addr, spage and execution addr*/
 	tmp_start = allowed_start;
 	if (spage >= 0) {
 		tmp_start = allowed_start + (spage * stm->dev->fl_ps);
@@ -484,6 +492,7 @@ int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
 		if(mem_type == MEM_TYPE_FLASH)
 			spage = (tmp_start - stm->dev->fl_start) / stm->dev->fl_ps;
 	}
+	if(exec_flag == EXEC_FLAG_REL) execute += allowed_start;
 
 /*Step 3. claculate readwrite_len and npages*/
 	if (!readwrite_len && npages)
@@ -510,11 +519,15 @@ int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
 /*Step 4. validating*/
 	if (tmp_start < allowed_start || tmp_end > allowed_end) {
 		fprintf(stderr, "ERROR: Can't fit input to selected region or specified start/length are invalid\n");
-		fprintf(stderr, "Start 0x%08X < 0x%08X OR end 0x%08X > 0x%08X\n", tmp_start, allowed_start, tmp_end, allowed_end);
+		fprintf(stderr, "Start 0x%08x < 0x%08x OR end 0x%08x > 0x%08x\n", tmp_start, allowed_start, tmp_end, allowed_end);
+		return 0;
+	}
+	if (!((execute >= stm->dev->fl_start && execute < stm->dev->fl_end) || (execute >= stm->dev->ram_bl_res && execute < stm->dev->ram_end))) {
+		fprintf(stderr, "ERROR: Execution address (0x%08x) must be in flash or RAM\n", execute);
 		return 0;
 	}
 	if(verbose > 1) {
-		fprintf(diag, "Starting at 0x%08X stopping at 0x%08X, length is %d bytes\n", tmp_start, tmp_end, readwrite_len);
+		fprintf(diag, "Starting at 0x%08x stopping at 0x%08x, length is %d bytes\n", tmp_start, tmp_end, readwrite_len);
 		if(mem_type == MEM_TYPE_FLASH)
 		{
 			if(npages == 0xFFFF)
@@ -617,7 +630,10 @@ int parse_options(int argc, char *argv[]) {
 				break;
 
 			case 'g':
-				exec_flag = 1;
+				if(optarg[0] == '+')
+					exec_flag = EXEC_FLAG_REL;
+				else
+					exec_flag = EXEC_FLAG_ABS;
 				execute   = strtoul(optarg, NULL, 0);
 				if (execute % 4 != 0) {
 					fprintf(stderr, "ERROR: Execution address must be word-aligned\n");
@@ -745,6 +761,10 @@ int parse_options(int argc, char *argv[]) {
 		fprintf(stderr, "ERROR: Invalid usage, Only flash can be erased with -e and -E\n");
 		return 1;
 	}
+	if (exec_flag && ((mem_type != MEM_TYPE_FLASH)&&(mem_type != MEM_TYPE_RAM))) {
+		fprintf(stderr, "ERROR: Invalid usage, Can execute code only from flash or RAM\n");
+		return 1;
+	}
 	if (reset && (disable_reset || exec_flag)) {
 		fprintf(stderr, "ERROR: Invalid usage, cannot use -K or -g with -R\n");
 		return 1;
@@ -759,10 +779,10 @@ int parse_options(int argc, char *argv[]) {
 }
 
 void show_help(char *name, char *ser_port) {
-	fprintf(stderr, "stmflasher v0.6.0 current - http://developer.berlios.de/projects/stmflasher/\n\n");
+	fprintf(stderr, "stmflasher v0.6.1 current - http://developer.berlios.de/projects/stmflasher/\n\n");
 	fprintf(stderr,
 		"Usage: %s -p ser_port [-b rate] [-EvKfc] [-S [+]address[:length]] [-s start_page[:n_pages]]\n"
-		"	[-n count] [-r|w filename] [-M f|r|e|a] [-ujkeiR] [-g address] [-V level] [-h]\n"
+		"	[-n count] [-r|w filename] [-M f|r|e|a] [-ujkeiR] [-g [+]address] [-V level] [-h]\n"
 		"\n"
 		"	-p ser_port	Serial port name\n"
 		"	-b ser_port	Serial port baud rate (default 57600)\n"
@@ -773,7 +793,7 @@ void show_help(char *name, char *ser_port) {
 		"	-j		Enable the flash read-protection\n"
 		"	-k		Disable the flash read-protection\n"
 		"	-e		Erase only\n"
-		"	-g address	Start execution at specified address (0 = flash start)\n"
+		"	-g [+]address	Start execution at specified address (0 = flash start)\n"
 		"	-i		Print information about target device and serial mode\n"
 		"	-R 		Reset controller (default for read/write/erase/etc)\n"
 		"\n"
