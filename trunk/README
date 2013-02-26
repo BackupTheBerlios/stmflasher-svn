@@ -47,14 +47,18 @@ Supported chips:
 * 0x428 - STM32 High-density VL
 * 0x430 - STM32 XL-density
 * 0x416 - STM32L Medium-density
-* 0x427 - STM32L Medium-density PL
+* 0x427 - STM32L Medium-density PL (?)
 * 0x436 - STM32L High-density
-* 0x411 - STM32F2
-* 0x413 - STM32F4
+* 0x411 - STM32F2 (Limited support)
+* 0x413 - STM32F4 (Limited support)
 * 0x440 - STM32F051
-* 0x444 - STM32F050 (Low-density)
-* 0x422 - STM32F30 & F31
-* 0x432 - STM32F37 & F38
+* 0x444 - STM32F050 (Low-density) (?)
+* 0x422 - STM32F30 & F31 (?)
+* 0x432 - STM32F37 & F38 (?)
+
+Note that on STM32F2/F4 only first 3 pages (48k of flash) can be used currectly.
+Use FullErase flag (-E) if you need to write to highest pages.
+(?) - These are not (yet) in AN2606, so reserved by bootloader memory not known.
 
 Usage
 -----

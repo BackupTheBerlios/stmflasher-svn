@@ -36,6 +36,13 @@
 #include "parsers/binary.h"
 #include "parsers/hex.h"
 
+enum {
+	MEM_TYPE_ANY,
+	MEM_TYPE_FLASH,
+	MEM_TYPE_RAM,
+	MEM_TYPE_EEPROM
+};
+
 /* device globals */
 serial_t	*serial		= NULL;
 stm32_t		*stm		= NULL;
@@ -52,9 +59,10 @@ char		wu		= 0; //write unprotect
 char		rp		= 0; //read protect
 char		ru		= 0; //read unprotect
 char		eraseOnly	= 0; //erase memory
-char		ram_read_write	= 0; //working with RAM instead flash
+char		mem_type	= MEM_TYPE_FLASH; //target memory region
+char		relative_addr	= 1; //use relative addresation for -S option
 int		npages		= 0; //pages to erase
-int		spage		= 0; //first page to erase
+int		spage		= -1; //first page to erase
 uint32_t	readwrite_len	= 0; //number of read/write bytes
 uint32_t	start_addr	= 0; //addr for read/write
 char		verify		= 0; //verify data after writing
@@ -122,6 +130,16 @@ int main(int argc, char* argv[]) {
 		}
 
 		if(verbose > 1) fprintf(diag, "Using Parser : %s\n", parser->name);
+		/* Assume data from stdin is whole specified range */
+		if (filename[0] != '-') {
+			unsigned int tmp_size = parser->size(p_st);
+			if(readwrite_len == 0)
+				readwrite_len = tmp_size;
+			if(verbose > 1) {
+				fprintf(diag, "Input file size is %d (bytes to write: %d)\n", tmp_size, readwrite_len);
+			}
+		if(verbose > 1) fprintf(diag, "\n");
+		}
 	} else {
 		parser = &PARSER_BINARY;
 		p_st = parser->init();
@@ -171,7 +189,8 @@ int main(int argc, char* argv[]) {
 		fprintf(diag, "- Flash org.  :%5d pages (sector size: %dx%d)\n", (stm->dev->fl_end - stm->dev->fl_start ) / stm->dev->fl_ps, stm->dev->fl_pps, stm->dev->fl_ps);
 		if(stm->dev->eep_end - stm->dev->eep_start)
 			fprintf(diag, "- EEPROM      :%4dKiB at 0x%08x\n", (stm->dev->eep_end - stm->dev->eep_start ) / 1024, stm->dev->eep_start);
-		fprintf(diag, "Note: specified RAM/Flash sizes are maximum for this chip type. Your chip may have less memory amount!\n");
+		fprintf(diag, "Note: specified RAM/Flash sizes are maximum for this chip type.\n");
+		fprintf(diag, "      Your chip may have less memory amount!\n");
 		fprintf(diag, "\n");
 	}
 
@@ -180,6 +199,10 @@ int main(int argc, char* argv[]) {
 	unsigned int	len;
 	int		failed = 0;
 
+	if (!calc_workspace(diag, &start, &end)) {
+		goto close;
+	}
+
 	if (rd) {
 		if ((perr = parser->open(p_st, filename, 1)) != PARSER_ERR_OK) {
 			fprintf(stderr, "%s ERROR: %s\n", parser->name, parser_errstr(perr));
@@ -187,9 +210,6 @@ int main(int argc, char* argv[]) {
 			goto close;
 		}
 
-		if (!calc_workspace(diag, &start, &end)) {
-			goto close;
-		}
 		addr = start;
 
 		fflush(diag);
@@ -234,19 +254,6 @@ int main(int argc, char* argv[]) {
 	} else if (eraseOnly) {
 		ret = 0;
 		if(verbose) fprintf(diag, "Erasing flash\n");
-		if (start_addr || readwrite_len) {
-			if ((start_addr % stm->dev->fl_ps) != 0
-			    || (readwrite_len % stm->dev->fl_ps) != 0) {
-				fprintf(stderr, "Specified start & length are invalid (must be page aligned)\n");
-				ret = 1;
-				goto close;
-			}
-			spage = start_addr / stm->dev->fl_ps;
-			if (readwrite_len)
-				npages = readwrite_len / stm->dev->fl_ps;
-			else
-				npages = (stm->dev->fl_end - stm->dev->fl_start) / stm->dev->fl_ps;
-		}
 
 		if (!stm32_erase_memory(stm, spage, npages)) {
 			fprintf(stderr, "Failed to erase memory\n");
@@ -266,17 +273,6 @@ int main(int argc, char* argv[]) {
 		ssize_t r;
 		unsigned int size;
 
-		/* Assume data from stdin is whole specified range */
-		if (filename[0] != '-') {
-			unsigned int tmp_size = parser->size(p_st);
-			if((readwrite_len == 0) || ((readwrite_len != 0) && (readwrite_len < tmp_size)))
-				readwrite_len = tmp_size;
-		}
-
-		if (!calc_workspace(diag, &start, &end)) {
-			goto close;
-		}
-
 		if (readwrite_len > (end - start)) {
 			fprintf(stderr, "Input file too big\n");
 			goto close;
@@ -293,7 +289,7 @@ int main(int argc, char* argv[]) {
 
 		// TODO: If writes are not page aligned, we should probably read out existing flash
 		//       contents first, so it can be preserved and combined with new data
-		if(!ram_read_write) {
+		if(mem_type == MEM_TYPE_FLASH) {
 			if(verbose) {
 				fprintf(diag, "Erasing flash... ");
 				fflush(diag);
@@ -412,56 +408,114 @@ close:
 	return ret;
 }
 
+/*
+ * Input data: Global variables
+ * * stm - device specification
+ * * mem_type - target memoty type
+ * * start_addr, spage - start of working region
+ * * readwrite_len, npages - size of working region
+ * * relative_addr - use relative start address
+ * Output data: Arguments
+ * * start, end - absolute start and end addresses of working region
+ * Output data: Global variables
+ * * start_addr, spage - start of working region (start_addr always absolute)
+ * * readwrite_len, npages - size of working region
+ * return value: 0 if error; 1 if OK
+ */
 int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
 {
 	uint32_t tmp_start = 0, tmp_end = 0;
-	uint32_t allowed_start = ram_read_write?stm->dev->ram_bl_res:stm->dev->fl_start;
-	uint32_t allowed_end = ram_read_write?stm->dev->ram_end:stm->dev->fl_end;
+	uint32_t allowed_start;
+	uint32_t allowed_end;
 
-	if (start_addr) {
-		tmp_start = start_addr;
-		if(tmp_start < stm->dev->fl_start) { //assume that user specify offset
-// FIXME (alatar#1#): Working with large offsets + if user want to work with at 0x0000 0000 (aliased area)
-			tmp_start += allowed_start;
-		}
-		spage = (tmp_start - stm->dev->fl_start) / stm->dev->fl_ps;
-	} else {
-		tmp_start = allowed_start;
-		if(!ram_read_write)
-			tmp_start += (spage * stm->dev->fl_ps);
+/*Step 0. check input*/
+	if((mem_type != MEM_TYPE_FLASH) && ((spage >= 0)||(npages > 0)))
+	{
+		fprintf(stderr, "UNEXPECTED ERROR: Wrong memory type!\n");
+		return 0;
 	}
 
+/*Step 1. init boundaries of allowed region*/
+	switch (mem_type)
+	{
+	case MEM_TYPE_FLASH:
+		allowed_start = stm->dev->fl_start;
+		allowed_end  =  stm->dev->fl_end;
+		if(verbose > 1)
+			fprintf(diag, "Working with Flash\n");
+		break;
+	case MEM_TYPE_RAM:
+		allowed_start = stm->dev->ram_bl_res; //exclude memory, reserved by bootloader
+		allowed_end  =  stm->dev->ram_end;
+		if(verbose > 1)
+			fprintf(diag, "Working with RAM\n");
+		break;
+	case MEM_TYPE_EEPROM:
+		allowed_start = stm->dev->eep_start;
+		allowed_end  =  stm->dev->eep_end;
+		if((allowed_end - allowed_start) == 0)
+		{
+			fprintf(stderr, "ERROR: This chip does not have EEPROM\n");
+			return 0;
+		}
+		if(verbose > 1)
+			fprintf(diag, "Working with EEPROM\n");
+		break;
+	case MEM_TYPE_ANY:
+		allowed_start = 0;
+		allowed_end  =  0xFFFFFFFF;
+		if(verbose > 1)
+			fprintf(diag, "Working in entire memory space\n");
+		break;
+	default:
+		fprintf(stderr, "ERROR: Memory type not known\n");
+		return 0;
+	}
+
+/*Step 2. claculate start_addr and spage*/
+	tmp_start = allowed_start;
+	if (spage >= 0) {
+		tmp_start = allowed_start + (spage * stm->dev->fl_ps);
+	} else {
+		if(relative_addr)
+			tmp_start += start_addr;
+		else
+			tmp_start = start_addr;
+		if(mem_type == MEM_TYPE_FLASH)
+			spage = (tmp_start - stm->dev->fl_start) / stm->dev->fl_ps;
+	}
+
+/*Step 3. claculate readwrite_len and npages*/
 	if (!readwrite_len && npages)
-		readwrite_len = npages * stm->dev->fl_ps;
-
-
-	if (readwrite_len)
+		readwrite_len = (npages == 0xFFFF)?(allowed_end - allowed_start):(npages * stm->dev->fl_ps);
+	if (readwrite_len) {
 		tmp_end = tmp_start + readwrite_len;
-	else {
+	} else {
 		tmp_end = allowed_end;
 		readwrite_len = tmp_end - tmp_start;
 	}
-
-	if ((!ram_read_write) && (npages == 0))
-	{
-		npages = 1; //clear spage
-		int spage_offset = tmp_start - ((spage * stm->dev->fl_ps) + stm->dev->fl_start);
-		int len_from_spage = spage_offset + readwrite_len - 1;
-		npages += (len_from_spage) / stm->dev->fl_ps;
+	if (mem_type == MEM_TYPE_FLASH) {
+		if (npages == 0) {
+			npages = 1; //clear spage
+			int spage_offset = tmp_start - ((spage * stm->dev->fl_ps) + stm->dev->fl_start);
+			int len_from_spage = spage_offset + readwrite_len - 1;
+			npages += (len_from_spage) / stm->dev->fl_ps;
+		}
+		if((spage == 0) && (npages*stm->dev->fl_ps) >= stm->dev->fl_end - stm->dev->fl_start)
+		{
+			npages = 0xFFFF;	//full memory
+		}
 	}
 
+/*Step 4. validating*/
 	if (tmp_start < allowed_start || tmp_end > allowed_end) {
-		fprintf(stderr, "Specified start & length are invalid\n");
-		fprintf(stderr, "Start %x < %x OR end %x > %x\n", tmp_start, allowed_start, tmp_end, allowed_end);
+		fprintf(stderr, "ERROR: Can't fit input to selected region or specified start/length are invalid\n");
+		fprintf(stderr, "Start 0x%08X < 0x%08X OR end 0x%08X > 0x%08X\n", tmp_start, allowed_start, tmp_end, allowed_end);
 		return 0;
 	}
 	if(verbose > 1) {
-		if(ram_read_write)
-			fprintf(diag, "Working with RAM\n");
-		else
-			fprintf(diag, "Working with Flash\n");
-		fprintf(diag, "Starting at 0x%08x stopping at 0x%08x, length is %d bytes\n", tmp_start, tmp_end, readwrite_len);
-		if(!ram_read_write)
+		fprintf(diag, "Starting at 0x%08X stopping at 0x%08X, length is %d bytes\n", tmp_start, tmp_end, readwrite_len);
+		if(mem_type == MEM_TYPE_FLASH)
 		{
 			if(npages == 0xFFFF)
 				fprintf(diag, "Affected entire flash memory\n");
@@ -470,14 +524,9 @@ int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
 		}
 	}
 
-	if((spage == 0) && (npages*stm->dev->fl_ps) >= stm->dev->fl_end - stm->dev->fl_start)
-	{
-		if(verbose > 1) fprintf(diag, "Will try to use mass erase\n");
-		npages = 0xFFFF;	//full memory
-	}
-
-	*start = tmp_start;
-	*end = tmp_end;
+/*Step 5. copy calculated bounaries to output variables*/
+	if(start)*start = tmp_start;
+	if( end ) *end  = tmp_end;
 	return 1;
 }
 
@@ -489,7 +538,7 @@ int parse_options(int argc, char *argv[]) {
 	char have_work = 0;
 	char show_help_and_exit = 0;
 
-	while((c = getopt(argc, argv, "p:b:r:w:vn:g:ujkeiMREKfchs:S:V:")) != -1) {
+	while((c = getopt(argc, argv, "p:b:r:w:vn:g:ujkeiM:REKfchs:S:V:")) != -1) {
 		switch(c) {
 			case 'p':
 				device = optarg;
@@ -546,15 +595,12 @@ int parse_options(int argc, char *argv[]) {
 				if (rd || wr) {
 					fprintf(stderr, "ERROR: Invalid options, can't erase-only and read/write at the same time\n");
 					return 1;
-				} else if(ram_read_write) {
-					fprintf(stderr, "ERROR: Invalid options, can't erase RAM\n");
-					return 1;
 				}
 				break;
 
 			case 'E':
 				full_erase = 1;
-				if (spage || (npages && (npages < 0xFFFF))) {
+				if ((spage > 0) || (npages && (npages < 0xFFFF))) {
 					fprintf(stderr, "ERROR: You cannot to specify a page count and full erase at same time");
 					return 1;
 				}
@@ -594,17 +640,21 @@ int parse_options(int argc, char *argv[]) {
 						return 1;
 					}
 				}
-				if (full_erase && (spage || (npages && (npages < 0xFFFF)))) {
+				if (full_erase && ((spage > 0) || (npages && (npages < 0xFFFF)))) {
 					fprintf(stderr, "ERROR: You cannot to specify a page count and full erase at same time");
 					return 1;
 				}
 				break;
 			case 'S':
-				if (spage || npages) {
+				if ((spage >= 0) || npages) {
 					fprintf(stderr, "ERROR: Invalid options, can't specify start page / num pages and start address/length\n");
 					return 1;
 				} else {
 					char *pLen;
+					if((optarg[0] == '+') || (optarg[0] == ':'))
+						relative_addr = 1;
+					else
+						relative_addr = 0;
 					start_addr = strtoul(optarg, &pLen, 0);
 					if (*pLen == ':') {
 						pLen++;
@@ -613,7 +663,25 @@ int parse_options(int argc, char *argv[]) {
 				}
 				break;
 			case 'M':
-				ram_read_write = 1;
+				switch(optarg[0])
+				{
+				case 'f':
+					mem_type = MEM_TYPE_FLASH;
+					break;
+				case 'r':
+					mem_type = MEM_TYPE_RAM;
+					break;
+				case 'e':
+					mem_type = MEM_TYPE_EEPROM;
+					break;
+				case 'a':
+					mem_type = MEM_TYPE_ANY;
+					fprintf(stderr, "WARNING: Using entire address space. You can damage bootloader's RAM in this mode!\n");
+					break;
+				default:
+					fprintf(stderr, "ERROR: Memory type not known\n");
+					return 1;
+				}
 				break;
 			case 'R':
 				reset = 1;
@@ -669,8 +737,12 @@ int parse_options(int argc, char *argv[]) {
 		show_help(argv[0], device);
 		return 1;
 	}
-	if ((spage || npages) && ram_read_write) {
-		fprintf(stderr, "ERROR: Invalid usage, cannot use page-based addressation when work with RAM\n");
+	if (((spage >= 0) || npages) && mem_type != MEM_TYPE_FLASH) {
+		fprintf(stderr, "ERROR: Invalid usage, page-based addressation availeble only for flash\n");
+		return 1;
+	}
+	if ((full_erase || eraseOnly) && (mem_type != MEM_TYPE_FLASH)) {
+		fprintf(stderr, "ERROR: Invalid usage, Only flash can be erased with -e and -E\n");
 		return 1;
 	}
 	if (reset && (disable_reset || exec_flag)) {
@@ -687,10 +759,10 @@ int parse_options(int argc, char *argv[]) {
 }
 
 void show_help(char *name, char *ser_port) {
-	fprintf(stderr, "stmflasher v0.5.1 current - http://developer.berlios.de/projects/stmflasher/\n\n");
+	fprintf(stderr, "stmflasher v0.6.0 current - http://developer.berlios.de/projects/stmflasher/\n\n");
 	fprintf(stderr,
-		"Usage: %s -p ser_port [-b rate] [-EvMKfc] [-S address[:length]] [-s start_page[:n_pages]]\n"
-		"	[-n count] [-r|w filename] [-ujkeiR] [-g address] [-V level] [-h]\n"
+		"Usage: %s -p ser_port [-b rate] [-EvKfc] [-S [+]address[:length]] [-s start_page[:n_pages]]\n"
+		"	[-n count] [-r|w filename] [-M f|r|e|a] [-ujkeiR] [-g address] [-V level] [-h]\n"
 		"\n"
 		"	-p ser_port	Serial port name\n"
 		"	-b ser_port	Serial port baud rate (default 57600)\n"
@@ -708,11 +780,12 @@ void show_help(char *name, char *ser_port) {
 		"	-E		Full erase\n"
 		"	-v		Verify writes\n"
 		"	-n count	Retry failed writes up to count times (default 10)\n"
-		"	-S address[:length]	Specify start address and optionally length for\n"
+		"	-S [+]address[:length]	Specify start address and optionally length for\n"
 		"				read/write/erase operations\n"
 		"	-s start_page[:n_pages]	Specify start address at page <start_page> (0 = flash start)\n"
-		"				and  optionally number of pages to erase\n"
-		"	-M 		Work with RAM, not Flash (read/write/erase operation)\n"
+		"				and optionally number of pages to erase\n"
+		"	-M f|r|e|a	Work with specified memory type (read/write/erase operation)\n"
+		"			f - Flash (default), r - RAM, e - EEPROM, a - entire address space\n"
 		"	-K 		Don`t Reset controller after operation (keep in bootloader)\n"
 		"	-f		Force binary parser\n"
 		"	-c		Resume the connection (don't send initial INIT)\n"
@@ -730,7 +803,7 @@ void show_help(char *name, char *ser_port) {
 		"	Show information and read flash to file:\n"
 		"		%s -p %s -i -r filename\n"
 		"	Read 100 bytes of RAM with offset 0x1000 to stdout:\n"
-		"		%s -p %s -r - -M -S 0x1000:100\n"
+		"		%s -p %s -r - -Mr -S +0x1000:100\n"
 		"	Read first page of flash to file in verbose mode:\n"
 		"		%s -p %s -r readed.bin -S :1 -V\n"
 		"	Start execution:\n"

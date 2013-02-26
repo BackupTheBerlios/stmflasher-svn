@@ -1,7 +1,14 @@
-stmflasher v0.5.1
+stmflasher v0.6.0          26.02.2013
 
- * Added STM32L Medium-density Plus (id 0x427) and STM32F050x (0x444)
- * Added info about EEPROM for STM32L
+ + Allow to work with EEPROM on STM32L
+ + Chang way to use relative addressation (use '+' sign)
+ * Re-factoring of calculation working space
+ * Fixed soft reset, broken in 0.5.1
+
+stmflasher v0.5.1          24.02.2013
+
+ + Added STM32L Medium-density Plus (id 0x427) and STM32F050x (0x444)
+ + Added info about EEPROM for STM32L
 
 stmflasher v0.5            21.02.2013
 
