@@ -508,7 +508,7 @@ char stm32_go(const stm32_t *stm, uint32_t address) {
 }
 
 char stm32_reset_device(const stm32_t *stm) {
-	uint32_t target_address = stm->dev->ram_start;
+	uint32_t target_address = stm->dev->ram_bl_res;
 
 	return stm32_run_raw_code(stm, target_address, stm_reset_code, stm_reset_code_length);
 }
