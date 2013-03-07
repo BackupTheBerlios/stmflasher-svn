@@ -492,7 +492,10 @@ int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
 		if(mem_type == MEM_TYPE_FLASH)
 			spage = (tmp_start - stm->dev->fl_start) / stm->dev->fl_ps;
 	}
-	if(exec_flag == EXEC_FLAG_REL) execute += allowed_start;
+	if(exec_flag == EXEC_FLAG_REL) {
+		execute += allowed_start;
+		exec_flag = EXEC_FLAG_ABS;
+	}
 
 /*Step 3. claculate readwrite_len and npages*/
 	if (!readwrite_len && npages)
@@ -522,7 +525,9 @@ int calc_workspace(FILE *diag, uint32_t *start, uint32_t *end)
 		fprintf(stderr, "Start 0x%08x < 0x%08x OR end 0x%08x > 0x%08x\n", tmp_start, allowed_start, tmp_end, allowed_end);
 		return 0;
 	}
-	if (!((execute >= stm->dev->fl_start && execute < stm->dev->fl_end) || (execute >= stm->dev->ram_bl_res && execute < stm->dev->ram_end))) {
+	if ((exec_flag == EXEC_FLAG_ABS) &&
+	    (execute < stm->dev->fl_start   || execute >= stm->dev->fl_end) &&
+	    (execute < stm->dev->ram_bl_res || execute >= stm->dev->ram_end)) {
 		fprintf(stderr, "ERROR: Execution address (0x%08x) must be in flash or RAM\n", execute);
 		return 0;
 	}
@@ -778,7 +783,7 @@ int parse_options(int argc, char *argv[]) {
 }
 
 void show_help(char *name, char *ser_port) {
-	fprintf(stderr, "stmflasher v0.6.1 current - http://developer.berlios.de/projects/stmflasher/\n\n");
+	fprintf(stderr, "stmflasher v0.6.2 current - http://developer.berlios.de/projects/stmflasher/\n\n");
 	fprintf(stderr,
 		"Usage: %s -p ser_port [-b rate] [-EvKfc] [-S [+]address[:length]] [-s start_page[:n_pages]]\n"
 		"	[-n count] [-r|w filename] [-M f|r|e|a] [-ujkeiR] [-g [+]address] [-V level] [-h]\n"
