@@ -418,10 +418,10 @@ char stm32_erase_memory(const stm32_t *stm, uint16_t spage, uint16_t pages) {
 
 		uint16_t pg_num;
 		uint8_t pg_byte;
- 		uint8_t cs = (pages-1 >> 8) ^ (pages-1 & 0xFF);
+ 		uint8_t cs = ((pages-1) >> 8) ^ ((pages-1) & 0xFF);
 
- 		stm32_send_byte(stm, pages-1 >> 8); // Number of pages to be erased, two bytes, MSB first
- 		stm32_send_byte(stm, pages-1 & 0xFF);
+ 		stm32_send_byte(stm, (pages-1) >> 8); // Number of pages to be erased, two bytes, MSB first
+ 		stm32_send_byte(stm, (pages-1) & 0xFF);
 
  		for (pg_num = spage; pg_num < (pages + spage); pg_num++) {
  			pg_byte = pg_num >> 8;

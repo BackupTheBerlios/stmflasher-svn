@@ -548,7 +548,6 @@ int parse_options(int argc, char *argv[]) {
 	char reset = 0;
 	char disable_reset = 0;
 	char full_erase = 0;
-	char have_work = 0;
 	char show_help_and_exit = 0;
 
 	while((c = getopt(argc, argv, "p:b:r:w:vn:g:ujkeiM:REKfchs:S:V:")) != -1) {
