@@ -187,13 +187,14 @@ int main(int argc, char* argv[]) {
 		fprintf(diag, "Option 1      : 0x%02x\n", stm->option1);
 		fprintf(diag, "Option 2      : 0x%02x\n", stm->option2);
 		fprintf(diag, "- RAM up to   :%4dKiB at 0x%08x\n", (stm->dev->ram_end - stm->dev->ram_start) / 1024, stm->dev->ram_start);
-		fprintf(diag, "  (%db to 0x%08x reserved by bootloader)\n", stm->dev->ram_bl_res - stm->dev->ram_start , stm->dev->ram_bl_res);
+		fprintf(diag, "              :  (%db to 0x%08x reserved by bootloader)\n", stm->dev->ram_bl_res - stm->dev->ram_start , stm->dev->ram_bl_res);
 		fprintf(diag, "- System mem  :%4dKiB at 0x%08x\n", (stm->dev->mem_end - stm->dev->mem_start) / 1024, stm->dev->mem_start);
 		fprintf(diag, "- Option mem  :  %4dB at 0x%08x\n", stm->dev->opt_end - stm->dev->opt_start + 1, stm->dev->opt_start);
 		fprintf(diag, "- Flash up to :%4dKiB at 0x%08x\n", (stm->dev->fl_end - stm->dev->fl_start ) / 1024, stm->dev->fl_start);
-		fprintf(diag, "- Flash org.  :%5d pages (sector size: %dx%d)\n", (stm->dev->fl_end - stm->dev->fl_start ) / stm->dev->fl_ps, stm->dev->fl_pps, stm->dev->fl_ps);
+		fprintf(diag, "- Flash org.  : %d sectors x %d pages x %d bytes\n", (stm->dev->fl_end - stm->dev->fl_start ) / (stm->dev->fl_ps * stm->dev->fl_pps), stm->dev->fl_pps, stm->dev->fl_ps);
 		if(stm->dev->eep_end - stm->dev->eep_start)
 			fprintf(diag, "- EEPROM      :%4dKiB at 0x%08x\n", (stm->dev->eep_end - stm->dev->eep_start ) / 1024, stm->dev->eep_start);
+		fprintf(diag, "\n");
 		fprintf(diag, "Note: specified RAM/Flash sizes are maximum for this chip type.\n");
 		fprintf(diag, "      Your chip may have less memory amount!\n");
 		fprintf(diag, "\n");
@@ -783,7 +784,7 @@ int parse_options(int argc, char *argv[]) {
 }
 
 void show_help(char *name, char *ser_port) {
-	fprintf(stderr, "stmflasher v0.6.2 current - http://developer.berlios.de/projects/stmflasher/\n\n");
+	fprintf(stderr, "stmflasher v0.6.3 current - http://developer.berlios.de/projects/stmflasher/\n\n");
 	fprintf(stderr,
 		"Usage: %s -p ser_port [-b rate] [-EvKfc] [-S [+]address[:length]] [-s start_page[:n_pages]]\n"
 		"	[-n count] [-r|w filename] [-M f|r|e|a] [-ujkeiR] [-g [+]address] [-V level] [-h]\n"
@@ -823,13 +824,13 @@ void show_help(char *name, char *ser_port) {
 		"	Get device information:\n"
 		"		%s -p %s -i\n"
 		"	Write with verify and then start execution:\n"
-		"		%s -p %s -w filename -v -g 0x0\n"
+		"		%s -p %s -w filename -v -g +0\n"
 		"	Show information and read flash to file:\n"
 		"		%s -p %s -i -r filename\n"
 		"	Read 100 bytes of RAM with offset 0x1000 to stdout:\n"
 		"		%s -p %s -r - -Mr -S +0x1000:100\n"
 		"	Read first page of flash to file in verbose mode:\n"
-		"		%s -p %s -r readed.bin -S :1 -V\n"
+		"		%s -p %s -r readed.bin -S :1 -V2\n"
 		"	Start execution:\n"
 		"		%s -p %s -g 0x0\n",
 		name,
