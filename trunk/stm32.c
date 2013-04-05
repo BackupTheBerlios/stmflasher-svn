@@ -313,6 +313,7 @@ char stm32_write_memory(const stm32_t *stm, uint32_t address, const uint8_t data
 
 	/* setup the cs and send the length */
 	extra = len % 4;
+	if(extra) extra = 4 - extra;
 	cs = len - 1 + extra;
 	stm32_send_byte(stm, cs);
 
